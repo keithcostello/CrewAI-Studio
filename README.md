@@ -172,9 +172,46 @@ Video tutorial on CrewAI Studio made by Josh Poco
 ## Star History
 
 <a href="https://star-history.com/#strnad/CrewAI-Studio&Date">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=strnad/CrewAI-Studio&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=strnad/CrewAI-Studio&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=strnad/CrewAI-Studio&type=Date" />
- </picture>   
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=strnad/CrewAI-Studio&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=strnad/CrewAI-Studio&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=strnad/CrewAI-Studio&type=Date" />
+  </picture>   
 </a>
+
+---
+
+## OpenCode.ai Enhanced Configuration
+
+This repository includes a complete OpenCode.ai integration that enhances the original CrewAI-Studio with:
+
+✅ **Custom Agent System**
+- Installation agent with full verification
+- Crew builder with pre-configured templates  
+- Verification agent with 14-point checklist
+
+✅ **Command System**
+- `/verify` - Run comprehensive verification
+- `/new-crew` - Create crews from templates
+- `/backup-db` - Automated database backups
+
+✅ **Documentation & Templates**
+- Four production-ready crew templates
+- Complete installation and troubleshooting guide
+- Data persistence and backup procedures
+
+### Setup Requirements
+1. **Start Docker Desktop** (required for container runtime)
+2. **Configure API keys** in `.env` file:
+   - `OPENAI_API_KEY` = your DashScope Coding API key
+   - `OPENAI_API_BASE` = https://coding-intl.dashscope.aliyuncs.com/v1
+3. **Run**: `docker-compose up --build`
+4. **Access**: http://localhost:8501
+
+### Critical Rules
+- **Docker only** - No Conda/venv installations
+- **Data protection** - Never run `docker-compose down -v`
+- **DashScope primary** - qwen3-coder-plus and qwen3-max-2026-01-23 are the supported models
+- **Verify everything** - All 14 verification points must pass
+
+This transforms CrewAI-Studio into a powerful daily workbench for AI agent team orchestration using DashScope Coding API!

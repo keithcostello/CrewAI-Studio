@@ -1,0 +1,68 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    "docs/agent-brief.md",
+    "docs/starter-crews.md"
+  ],
+  "agent": {
+    "build": {
+      "mode": "primary",
+      "model": "dashscope/qwen3-max-2026-01-23",
+      "prompt": "You are working on a CrewAI-Studio fork. This is a Docker-based Streamlit app for AI agent orchestration using DashScope Coding API as the LLM provider. Read AGENTS.md before making any changes. Always verify changes work within Docker Compose. Never use Conda or venv.",
+      "tools": {
+        "write": true,
+        "edit": true,
+        "bash": true
+      }
+    },
+    "plan": {
+      "mode": "primary",
+      "model": "dashscope/qwen3-max-2026-01-23",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": true
+      }
+    },
+    "installer": {
+      "description": "Handles initial fork, clone, configuration, and verification of CrewAI-Studio with DashScope Coding API",
+      "mode": "subagent",
+      "model": "dashscope/qwen3-coder-plus",
+      "prompt": "{file:./docs/agent-brief.md}\n\nYou are the installation agent. Execute the installation steps from the agent brief. Run through the full verification checklist before reporting success. Do not skip any verification step."
+    },
+    "crew-builder": {
+      "description": "Creates pre-configured crew templates from starter-crews.md using DashScope models",
+      "mode": "subagent",
+      "model": "dashscope/qwen3-coder-plus",
+      "prompt": "{file:./docs/starter-crews.md}\n\nYou help create and configure crews in CrewAI-Studio using DashScope Coding API (qwen3-coder-plus, qwen3-max-2026-01-23). When asked to set up a crew, reference the starter templates and guide the user through configuration via the Streamlit UI or direct database interaction."
+    },
+    "verifier": {
+      "description": "Runs post-install and post-change verification",
+      "mode": "subagent",
+      "model": "dashscope/qwen3-coder-plus",
+      "prompt": "{file:./docs/verification-checklist.md}\n\nRun every check in the verification checklist. Report PASS/FAIL for each. Do not declare success unless all checks pass.",
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": true
+      }
+    }
+  },
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "docker *": "allow",
+      "docker-compose *": "allow",
+      "docker compose *": "allow",
+      "cat *": "allow",
+      "ls *": "allow",
+      "grep *": "allow",
+      "curl *": "ask",
+      "git *": "allow",
+      "git push *": "ask",
+      "cp *": "allow",
+      "rm *": "ask"
+    }
+  }
+}
