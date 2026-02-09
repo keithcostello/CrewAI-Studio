@@ -14,13 +14,12 @@ from my_agent import MyAgent
 from my_task import MyTask
 from datetime import datetime
 
-
 class PageExportCrew:
     def __init__(self):
         self.name = "Import/export"
 
     def extract_placeholders(self, text):
-        return re.findall(r"\{(.*?)\}", text)
+        return re.findall(r'\{(.*?)\}', text)
 
     def get_placeholders_from_crew(self, crew):
         placeholders = set()
@@ -34,18 +33,8 @@ class PageExportCrew:
         tasks = crew.tasks
 
         # Check if any custom tools are used
-        custom_tools_used = any(
-            tool.name
-            in [
-                "CustomApiTool",
-                "CustomFileWriteTool",
-                "CustomCodeInterpreterTool",
-                "ScrapeWebsiteToolEnhanced",
-                "CSVSearchToolEnhanced",
-            ]
-            for agent in agents
-            for tool in agent.tools
-        )
+        custom_tools_used = any(tool.name in ["CustomApiTool", "CustomFileWriteTool", "CustomCodeInterpreterTool", "ScrapeWebsiteToolEnhanced", "CSVSearchToolEnhanced"] 
+                                for agent in agents for tool in agent.tools)
 
         def json_dumps_python(obj):
             if isinstance(obj, bool):
@@ -55,36 +44,27 @@ class PageExportCrew:
         def format_tool_instance(tool):
             tool_class = TOOL_CLASSES.get(tool.name)
             if tool_class:
-                params = ", ".join(
-                    [
-                        f"{key}={json_dumps_python(value)}"
-                        for key, value in tool.parameters.items()
-                        if value is not None
-                    ]
-                )
-                return f"{tool.name}({params})" if params else f"{tool.name}()"
+                params = ', '.join([f'{key}={json_dumps_python(value)}' for key, value in tool.parameters.items() if value is not None])
+                return f'{tool.name}({params})' if params else f'{tool.name}()'
             return None
 
-        agent_definitions = ",\n        ".join(
-            [
-                f"""
+        agent_definitions = ",\n        ".join([
+            f"""
 Agent(
     role={json_dumps_python(agent.role)},
     backstory={json_dumps_python(agent.backstory)},
     goal={json_dumps_python(agent.goal)},
     allow_delegation={json_dumps_python(agent.allow_delegation)},
     verbose={json_dumps_python(agent.verbose)},
-    tools=[{", ".join([format_tool_instance(tool) for tool in agent.tools])}],
+    tools=[{', '.join([format_tool_instance(tool) for tool in agent.tools])}],
     llm=create_llm({json_dumps_python(agent.llm_provider_model)}, {json_dumps_python(agent.temperature)})
 )
             """
-                for agent in agents
-            ]
-        )
+            for agent in agents
+        ])
 
-        task_definitions = ",\n        ".join(
-            [
-                f"""
+        task_definitions = ",\n        ".join([
+            f"""
 Task(
     description={json_dumps_python(task.description)},
     expected_output={json_dumps_python(task.expected_output)},
@@ -92,38 +72,26 @@ Task(
     async_execution={json_dumps_python(task.async_execution)}
 )
             """
-                for task in tasks
-            ]
-        )
+            for task in tasks
+        ])
 
         placeholders = self.get_placeholders_from_crew(crew)
-        placeholder_inputs = "\n    ".join(
-            [
-                f"{placeholder} = st.text_input({json_dumps_python(placeholder.capitalize())})"
-                for placeholder in placeholders
-            ]
-        )
-        placeholders_dict = ", ".join(
-            [
-                f"{json_dumps_python(placeholder)}: {placeholder}"
-                for placeholder in placeholders
-            ]
-        )
+        placeholder_inputs = "\n    ".join([
+            f'{placeholder} = st.text_input({json_dumps_python(placeholder.capitalize())})'
+            for placeholder in placeholders
+        ])
+        placeholders_dict = ", ".join([f'{json_dumps_python(placeholder)}: {placeholder}' for placeholder in placeholders])
 
         manager_llm_definition = ""
         planning_llm_definition = ""
         if crew.process == Process.hierarchical and crew.manager_llm:
-            manager_llm_definition = (
-                f"manager_llm=create_llm({json_dumps_python(crew.manager_llm)})"
-            )
+            manager_llm_definition = f'manager_llm=create_llm({json_dumps_python(crew.manager_llm)})'
         elif crew.process == Process.hierarchical and crew.manager_agent:
-            manager_llm_definition = f"manager_agent=next(agent for agent in agents if agent.role == {json_dumps_python(crew.manager_agent.role)})"
-
+            manager_llm_definition = f'manager_agent=next(agent for agent in agents if agent.role == {json_dumps_python(crew.manager_agent.role)})'
+        
         if crew.planning and crew.planning_llm:
-            planning_llm_definition = (
-                f"planning_llm=create_llm({json_dumps_python(crew.planning_llm)})"
-            )
-
+            planning_llm_definition = f'planning_llm=create_llm({json_dumps_python(crew.planning_llm)})'
+        
         app_content = f"""
 import streamlit as st
 from crewai import Agent, Task, Crew, Process
@@ -133,11 +101,11 @@ from langchain_anthropic import ChatAnthropic
 from dotenv import load_dotenv
 import os
 from crewai_tools import *
-{'''from tools.CustomApiTool import CustomApiTool''' if custom_tools_used else ""}
-{'''from tools.CustomFileWriteTool import CustomFileWriteTool''' if custom_tools_used else ""}
-{'''from tools.CustomCodeInterpreterTool import CustomCodeInterpreterTool''' if custom_tools_used else ""}
-{'''from tools.ScrapeWebsiteToolEnhanced import ScrapeWebsiteToolEnhanced''' if custom_tools_used else ""}
-{'''from tools.CSVSearchToolEnhanced import CSVSearchToolEnhanced''' if custom_tools_used else ""}
+{'''from tools.CustomApiTool import CustomApiTool''' if custom_tools_used else ''}
+{'''from tools.CustomFileWriteTool import CustomFileWriteTool''' if custom_tools_used else ''}
+{'''from tools.CustomCodeInterpreterTool import CustomCodeInterpreterTool''' if custom_tools_used else ''}
+{'''from tools.ScrapeWebsiteToolEnhanced import ScrapeWebsiteToolEnhanced''' if custom_tools_used else ''}
+{'''from tools.CSVSearchToolEnhanced import CSVSearchToolEnhanced''' if custom_tools_used else ''}
 load_dotenv()
 
 def create_lmstudio_llm(model, temperature):
@@ -229,7 +197,7 @@ def main():
         cache={json_dumps_python(crew.cache)}, 
         max_rpm={json_dumps_python(crew.max_rpm)},
         planning={json_dumps_python(crew.planning)},
-        {manager_llm_definition}{"," if manager_llm_definition and planning_llm_definition else ""}
+        {manager_llm_definition}{',' if manager_llm_definition and planning_llm_definition else ''}
         {planning_llm_definition}
     )
 
@@ -252,12 +220,12 @@ def main():
 if __name__ == '__main__':
     main()
 """
-        with open(os.path.join(output_dir, "app.py"), "w") as f:
+        with open(os.path.join(output_dir, 'app.py'), 'w') as f:
             f.write(app_content)
 
         if custom_tools_used:
-            source_path = os.path.join(os.path.dirname(__file__), "tools")
-            dest_path = os.path.join(output_dir, "tools")
+            source_path = os.path.join(os.path.dirname(__file__), 'tools')
+            dest_path = os.path.join(output_dir, 'tools')
             shutil.copytree(source_path, dest_path)
 
     def create_env_file(self, output_dir):
@@ -268,7 +236,7 @@ if __name__ == '__main__':
 # ANTHROPIC_API_KEY="FILL-IN-YOUR-ANTHROPIC-API-KEY"
 # LMSTUDIO_API_BASE="http://localhost:1234/v1"
 """
-        with open(os.path.join(output_dir, ".env"), "w") as f:
+        with open(os.path.join(output_dir, '.env'), 'w') as f:
             f.write(env_content)
 
     def create_shell_scripts(self, output_dir):
@@ -286,9 +254,9 @@ pip install -r requirements.txt || { echo "Failed to install requirements"; exit
 
 echo "Installation completed successfully."
 """
-        with open(os.path.join(output_dir, "install.sh"), "w") as f:
+        with open(os.path.join(output_dir, 'install.sh'), 'w') as f:
             f.write(install_sh_content)
-            os.chmod(os.path.join(output_dir, "install.sh"), 0o755)
+            os.chmod(os.path.join(output_dir, 'install.sh'), 0o755)
 
         run_sh_content = """
 #!/bin/bash
@@ -303,9 +271,9 @@ cd "$SCRIPT_DIR"
 
 streamlit run app.py --server.headless True
 """
-        with open(os.path.join(output_dir, "run.sh"), "w") as f:
+        with open(os.path.join(output_dir, 'run.sh'), 'w') as f:
             f.write(run_sh_content)
-            os.chmod(os.path.join(output_dir, "run.sh"), 0o755)
+            os.chmod(os.path.join(output_dir, 'run.sh'), 0o755)
 
         install_bat_content = """
 @echo off
@@ -330,7 +298,7 @@ pip install -r requirements.txt || (
 
 echo Installation completed successfully.
 """
-        with open(os.path.join(output_dir, "install.bat"), "w") as f:
+        with open(os.path.join(output_dir, 'install.bat'), 'w') as f:
             f.write(install_bat_content)
 
         run_bat_content = """
@@ -345,18 +313,16 @@ call venv\\Scripts\\activate || (
 :: Run the Streamlit app
 streamlit run app.py --server.headless true
 """
-        with open(os.path.join(output_dir, "run.bat"), "w") as f:
+        with open(os.path.join(output_dir, 'run.bat'), 'w') as f:
             f.write(run_bat_content)
 
         # Copy the main project's requirements.txt
-        source_requirements = os.path.join(
-            os.path.dirname(__file__), "..", "requirements.txt"
-        )
-        dest_requirements = os.path.join(output_dir, "requirements.txt")
+        source_requirements = os.path.join(os.path.dirname(__file__), '..', 'requirements.txt')
+        dest_requirements = os.path.join(output_dir, 'requirements.txt')
         shutil.copy2(source_requirements, dest_requirements)
 
     def zip_directory(self, folder_path, output_path):
-        with zipfile.ZipFile(output_path, "w") as zip_file:
+        with zipfile.ZipFile(output_path, 'w') as zip_file:
             for foldername, subfolders, filenames in os.walk(folder_path):
                 for filename in filenames:
                     file_path = os.path.join(foldername, filename)
@@ -368,9 +334,7 @@ streamlit run app.py --server.headless true
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        selected_crew = next(
-            (crew for crew in ss.crews if crew.name == crew_name), None
-        )
+        selected_crew = next((crew for crew in ss.crews if crew.name == crew_name), None)
         if selected_crew:
             self.generate_streamlit_app(selected_crew, output_dir)
             self.create_env_file(output_dir)
@@ -380,143 +344,195 @@ streamlit run app.py --server.headless true
             self.zip_directory(output_dir, zip_path)
             return zip_path
 
+    def _try_fix_json(self, raw: str):
+        """Attempt to parse malformed JSON by fixing common issues.
+
+        Handles:
+        - Unquoted property names and string values (JS object notation)
+        - Multiple JSON objects concatenated (takes the first one)
+
+        Returns the parsed object on success, or None on failure.
+        """
+        # Step 1: If multiple root-level objects are concatenated, try taking just the first one.
+        # A simple heuristic: find balanced braces/brackets for the first value.
+        first_char = raw[0] if raw else ''
+        if first_char in ('{', '['):
+            close_char = '}' if first_char == '{' else ']'
+            depth = 0
+            in_string = False
+            escape = False
+            end_idx = None
+            for i, ch in enumerate(raw):
+                if escape:
+                    escape = False
+                    continue
+                if ch == '\\' and in_string:
+                    escape = True
+                    continue
+                if ch == '"' and not escape:
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if ch == first_char:
+                    depth += 1
+                elif ch == close_char:
+                    depth -= 1
+                    if depth == 0:
+                        end_idx = i
+                        break
+            if end_idx is not None and end_idx < len(raw) - 1:
+                raw = raw[:end_idx + 1]
+
+        # Step 2: Try parsing as-is (maybe the truncation helped).
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            pass
+
+        # Step 3: Fix unquoted keys and values.
+        # Add double quotes around unquoted keys:  key: -> "key":
+        fixed = re.sub(
+            r'(?<=[\{,\n])\s*([A-Za-z_][A-Za-z0-9_]*)\s*:',
+            r' "\1":',
+            raw
+        )
+        # Add double quotes around unquoted string values (after a colon, not a number/bool/null/array/object)
+        fixed = re.sub(
+            r':\s*(?!true\b|false\b|null\b|\d|[\[\{"\-])([^\n,\]\}]+?)(\s*[,\]\}\n])',
+            lambda m: ': "' + m.group(1).strip() + '"' + m.group(2),
+            fixed
+        )
+
+        try:
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            return None
+
     def export_crew_to_json(self, crew):
         crew_data = {
-            "id": crew.id,
-            "name": crew.name,
-            "process": crew.process,
-            "verbose": crew.verbose,
-            "memory": crew.memory,
-            "cache": crew.cache,
-            "planning": crew.planning,
-            "planning_llm": crew.planning_llm,
-            "max_rpm": crew.max_rpm,
-            "manager_llm": crew.manager_llm,
-            "manager_agent": crew.manager_agent.id if crew.manager_agent else None,
-            "created_at": crew.created_at,
-            "agents": [],
-            "tasks": [],
-            "tools": [],
+            'id': crew.id,
+            'name': crew.name,
+            'process': crew.process,
+            'verbose': crew.verbose,
+            'memory': crew.memory,
+            'cache': crew.cache,
+            'planning': crew.planning,
+            'planning_llm': crew.planning_llm,
+            'max_rpm': crew.max_rpm,
+            'manager_llm': crew.manager_llm,
+            'manager_agent': crew.manager_agent.id if crew.manager_agent else None,
+            'created_at': crew.created_at,
+            'agents': [],
+            'tasks': [],
+            'tools': []
         }
 
         tool_ids = set()
 
         for agent in crew.agents:
             agent_data = {
-                "id": agent.id,
-                "role": agent.role,
-                "backstory": agent.backstory,
-                "goal": agent.goal,
-                "allow_delegation": agent.allow_delegation,
-                "verbose": agent.verbose,
-                "cache": agent.cache,
-                "llm_provider_model": agent.llm_provider_model,
-                "temperature": agent.temperature,
-                "max_iter": agent.max_iter,
-                "tool_ids": [tool.tool_id for tool in agent.tools],
+                'id': agent.id,
+                'role': agent.role,
+                'backstory': agent.backstory,
+                'goal': agent.goal,
+                'allow_delegation': agent.allow_delegation,
+                'verbose': agent.verbose,
+                'cache': agent.cache,
+                'llm_provider_model': agent.llm_provider_model,
+                'temperature': agent.temperature,
+                'max_iter': agent.max_iter,
+                'tool_ids': [tool.tool_id for tool in agent.tools]
             }
-            crew_data["agents"].append(agent_data)
-            tool_ids.update(agent_data["tool_ids"])
+            crew_data['agents'].append(agent_data)
+            tool_ids.update(agent_data['tool_ids'])
 
         for task in crew.tasks:
             task_data = {
-                "id": task.id,
-                "description": task.description,
-                "expected_output": task.expected_output,
-                "async_execution": task.async_execution,
-                "agent_id": task.agent.id if task.agent else None,
-                "context_from_async_tasks_ids": task.context_from_async_tasks_ids,
-                "context_from_sync_tasks_ids": task.context_from_sync_tasks_ids,
-                "created_at": task.created_at,
+                'id': task.id,
+                'description': task.description,
+                'expected_output': task.expected_output,
+                'async_execution': task.async_execution,
+                'agent_id': task.agent.id if task.agent else None,
+                'context_from_async_tasks_ids': task.context_from_async_tasks_ids,
+                'context_from_sync_tasks_ids': task.context_from_sync_tasks_ids,
+                'created_at': task.created_at
             }
-            crew_data["tasks"].append(task_data)
+            crew_data['tasks'].append(task_data)
 
         for tool_id in tool_ids:
             tool = next((t for t in ss.tools if t.tool_id == tool_id), None)
             if tool:
                 tool_data = {
-                    "tool_id": tool.tool_id,
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.get_parameters(),
+                    'tool_id': tool.tool_id,
+                    'name': tool.name,
+                    'description': tool.description,
+                    'parameters': tool.get_parameters()
                 }
-                crew_data["tools"].append(tool_data)
+                crew_data['tools'].append(tool_data)
 
         return json.dumps(crew_data, indent=2)
-
+    
     def import_crew_from_json(self, crew_data):
         # Create tools
-        for tool_data in crew_data["tools"]:
-            tool_class = TOOL_CLASSES[tool_data["name"]]
-            tool = tool_class(tool_id=tool_data["tool_id"])
-            tool.set_parameters(**tool_data["parameters"])
+        for tool_data in crew_data['tools']:
+            tool_class = TOOL_CLASSES[tool_data['name']]
+            tool = tool_class(tool_id=tool_data['tool_id'])
+            tool.set_parameters(**tool_data['parameters'])
             if tool not in ss.tools:
                 ss.tools.append(tool)
                 db_utils.save_tool(tool)
 
         # Create agents
         agents = []
-        for agent_data in crew_data["agents"]:
+        for agent_data in crew_data['agents']:
             agent = MyAgent(
-                id=agent_data["id"],
-                role=agent_data["role"],
-                backstory=agent_data["backstory"],
-                goal=agent_data["goal"],
-                allow_delegation=agent_data["allow_delegation"],
-                verbose=agent_data["verbose"],
-                cache=agent_data.get("cache", True),
-                llm_provider_model=agent_data["llm_provider_model"],
-                temperature=agent_data["temperature"],
-                max_iter=agent_data["max_iter"],
-                created_at=agent_data.get("created_at"),
+                id=agent_data['id'],
+                role=agent_data['role'],
+                backstory=agent_data['backstory'],
+                goal=agent_data['goal'],
+                allow_delegation=agent_data['allow_delegation'],
+                verbose=agent_data['verbose'],
+                cache=agent_data.get('cache', True),
+                llm_provider_model=agent_data['llm_provider_model'],
+                temperature=agent_data['temperature'],
+                max_iter=agent_data['max_iter'],
+                created_at=agent_data.get('created_at')
             )
-            agent.tools = [
-                next(tool for tool in ss.tools if tool.tool_id == tool_id)
-                for tool_id in agent_data["tool_ids"]
-            ]
+            agent.tools = [next(tool for tool in ss.tools if tool.tool_id == tool_id) for tool_id in agent_data['tool_ids']]
             agents.append(agent)
             db_utils.save_agent(agent)
 
         # Create tasks
         tasks = []
-        for task_data in crew_data["tasks"]:
+        for task_data in crew_data['tasks']:
             task = MyTask(
-                id=task_data["id"],
-                description=task_data["description"],
-                expected_output=task_data["expected_output"],
-                async_execution=task_data["async_execution"],
-                agent=next(
-                    (agent for agent in agents if agent.id == task_data["agent_id"]),
-                    None,
-                ),
-                context_from_async_tasks_ids=task_data.get(
-                    "context_from_async_tasks_ids", None
-                ),
-                context_from_sync_tasks_ids=task_data.get(
-                    "context_from_sync_tasks_ids", None
-                ),
-                created_at=task_data["created_at"],
+                id=task_data['id'],
+                description=task_data['description'],
+                expected_output=task_data['expected_output'],
+                async_execution=task_data['async_execution'],
+                agent=next((agent for agent in agents if agent.id == task_data['agent_id']), None),
+                context_from_async_tasks_ids=task_data.get('context_from_async_tasks_ids', None),
+                context_from_sync_tasks_ids=task_data.get('context_from_sync_tasks_ids', None),
+                created_at=task_data['created_at']
             )
             tasks.append(task)
             db_utils.save_task(task)
 
         # Create crew
         crew = MyCrew(
-            id=crew_data["id"],
-            name=crew_data["name"],
-            process=crew_data["process"],
-            verbose=crew_data["verbose"],
-            memory=crew_data["memory"],
-            cache=crew_data["cache"],
-            planning=crew_data.get("planning", False),
-            planning_llm=crew_data.get("planning_llm"),
-            max_rpm=crew_data["max_rpm"],
-            manager_llm=crew_data["manager_llm"],
-            manager_agent=next(
-                (agent for agent in agents if agent.id == crew_data["manager_agent"]),
-                None,
-            ),
-            created_at=crew_data["created_at"],
+            id=crew_data['id'],
+            name=crew_data['name'],
+            process=crew_data['process'],
+            verbose=crew_data['verbose'],
+            memory=crew_data['memory'],
+            cache=crew_data['cache'],
+            planning=crew_data.get('planning', False),
+            planning_llm=crew_data.get('planning_llm'),
+            max_rpm=crew_data['max_rpm'],
+            manager_llm=crew_data['manager_llm'],
+            manager_agent=next((agent for agent in agents if agent.id == crew_data['manager_agent']), None),
+            created_at=crew_data['created_at']
         )
         crew.agents = agents
         crew.tasks = tasks
@@ -540,7 +556,7 @@ streamlit run app.py --server.headless true
                     label="Download All Crews JSON",
                     data=fp,
                     file_name=file_path,
-                    mime="application/json",
+                    mime="application/json"
                 )
 
         # JSON Import Button
@@ -548,46 +564,37 @@ streamlit run app.py --server.headless true
         if uploaded_file is not None:
             try:
                 json_data = json.load(uploaded_file)
-            except json.JSONDecodeError as e:
-                # Try to fix common JSON issues
+            except json.JSONDecodeError:
+                # If standard parsing fails, try to fix common issues:
+                # - Unquoted keys/values (JavaScript object notation)
+                # - Multiple JSON objects concatenated together
                 uploaded_file.seek(0)
-                content = uploaded_file.read().decode("utf-8")
-                fixed_content = self._try_fix_json(content)
-                if fixed_content:
-                    try:
-                        json_data = json.loads(fixed_content)
-                    except json.JSONDecodeError:
-                        st.error(
-                            f"Invalid JSON format: {e}. Please ensure your JSON file uses double quotes for keys and string values."
-                        )
-                        return
-                else:
-                    st.error(
-                        f"Invalid JSON format: {e}. Please ensure your JSON file uses double quotes for keys and string values."
-                    )
-                    return
+                raw_content = uploaded_file.read().decode("utf-8").strip()
+                json_data = self._try_fix_json(raw_content)
 
-            if isinstance(json_data, list):  # Full database export
+            if json_data is None:
+                st.error(
+                    "Invalid JSON file. Ensure all property names and string values "
+                    "are enclosed in double quotes. Example:\n\n"
+                    '```json\n{"id": "C_001", "name": "My Crew"}\n```'
+                )
+            elif isinstance(json_data, list):  # Full database export
                 with open("uploaded_file.json", "w") as f:
                     json.dump(json_data, f)
                 db_utils.import_from_json("uploaded_file.json")
                 st.success("Full database JSON file imported successfully!")
-            elif (
-                isinstance(json_data, dict) and "id" in json_data
-            ):  # Single crew export
+            elif isinstance(json_data, dict) and 'id' in json_data:  # Single crew export
                 imported_crew = self.import_crew_from_json(json_data)
                 st.success(f"Crew '{imported_crew.name}' imported successfully!")
             else:
-                st.error(
-                    "Invalid JSON format. Please upload a valid crew or full database export file."
-                )
+                st.error("Invalid JSON format. Please upload a valid crew or full database export file.")
 
-        if "crews" not in ss or len(ss.crews) == 0:
+        if 'crews' not in ss or len(ss.crews) == 0:
             st.write("No crews defined yet.")
         else:
             crew_names = [crew.name for crew in ss.crews]
             selected_crew_name = st.selectbox("Select crew to export", crew_names)
-
+            
             if st.button("Export singlepage app"):
                 zip_path = self.create_export(selected_crew_name)
                 with open(zip_path, "rb") as fp:
@@ -595,77 +602,15 @@ streamlit run app.py --server.headless true
                         label="Download Exported App",
                         data=fp,
                         file_name=f"{selected_crew_name}_app.zip",
-                        mime="application/zip",
-                    )
+                        mime="application/zip"
+                    )        
             if st.button("Export crew to JSON"):
-                selected_crew = next(
-                    (crew for crew in ss.crews if crew.name == selected_crew_name), None
-                )
+                selected_crew = next((crew for crew in ss.crews if crew.name == selected_crew_name), None)
                 if selected_crew:
                     crew_json = self.export_crew_to_json(selected_crew)
                     st.download_button(
                         label="Download Crew JSON",
                         data=crew_json,
                         file_name=f"{selected_crew_name}_export.json",
-                        mime="application/json",
+                        mime="application/json"
                     )
-
-    def _try_fix_json(self, content):
-        """Attempt to fix common JSON issues like unquoted keys and concatenated objects."""
-        import re
-        import json
-
-        # Try to handle concatenated JSON objects (take the first one)
-        try:
-            # Find the first complete JSON object
-            brace_count = 0
-            in_string = False
-            escape_next = False
-            start = None
-            end = None
-
-            for i, char in enumerate(content):
-                if escape_next:
-                    escape_next = False
-                    continue
-
-                if char == "\\":
-                    escape_next = True
-                    continue
-
-                if char == '"' and not escape_next:
-                    in_string = not in_string
-                    continue
-
-                if not in_string:
-                    if char == "{":
-                        if brace_count == 0:
-                            start = i
-                        brace_count += 1
-                    elif char == "}":
-                        brace_count -= 1
-                        if brace_count == 0 and start is not None:
-                            end = i + 1
-                            break
-
-            if start is not None and end is not None:
-                content = content[start:end]
-        except:
-            pass
-
-        # Try to add quotes around unquoted keys
-        try:
-            # Simple regex to add quotes around unquoted keys
-            # This is a basic fix and may not handle all cases
-            content = re.sub(
-                r"([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:", r'\1"\2":', content
-            )
-        except:
-            pass
-
-        # Validate if the fixed content is valid JSON
-        try:
-            json.loads(content)
-            return content
-        except:
-            return None
