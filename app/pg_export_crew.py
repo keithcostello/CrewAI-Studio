@@ -344,6 +344,71 @@ streamlit run app.py --server.headless true
             self.zip_directory(output_dir, zip_path)
             return zip_path
 
+    def _try_fix_json(self, raw: str):
+        """Attempt to parse malformed JSON by fixing common issues.
+
+        Handles:
+        - Unquoted property names and string values (JS object notation)
+        - Multiple JSON objects concatenated (takes the first one)
+
+        Returns the parsed object on success, or None on failure.
+        """
+        # Step 1: If multiple root-level objects are concatenated, try taking just the first one.
+        # A simple heuristic: find balanced braces/brackets for the first value.
+        first_char = raw[0] if raw else ''
+        if first_char in ('{', '['):
+            close_char = '}' if first_char == '{' else ']'
+            depth = 0
+            in_string = False
+            escape = False
+            end_idx = None
+            for i, ch in enumerate(raw):
+                if escape:
+                    escape = False
+                    continue
+                if ch == '\\' and in_string:
+                    escape = True
+                    continue
+                if ch == '"' and not escape:
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if ch == first_char:
+                    depth += 1
+                elif ch == close_char:
+                    depth -= 1
+                    if depth == 0:
+                        end_idx = i
+                        break
+            if end_idx is not None and end_idx < len(raw) - 1:
+                raw = raw[:end_idx + 1]
+
+        # Step 2: Try parsing as-is (maybe the truncation helped).
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            pass
+
+        # Step 3: Fix unquoted keys and values.
+        # Add double quotes around unquoted keys:  key: -> "key":
+        fixed = re.sub(
+            r'(?<=[\{,\n])\s*([A-Za-z_][A-Za-z0-9_]*)\s*:',
+            r' "\1":',
+            raw
+        )
+        # Add double quotes around unquoted string values (after a colon, not a number/bool/null/array/object)
+        fixed = re.sub(
+            r':\s*(?!true\b|false\b|null\b|\d|[\[\{"\-])([^\n,\]\}]+?)(\s*[,\]\}\n])',
+            lambda m: ': "' + m.group(1).strip() + '"' + m.group(2),
+            fixed
+        )
+
+        try:
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            return None
+
     def export_crew_to_json(self, crew):
         crew_data = {
             'id': crew.id,
@@ -497,9 +562,23 @@ streamlit run app.py --server.headless true
         # JSON Import Button
         uploaded_file = st.file_uploader("Import JSON file", type="json")
         if uploaded_file is not None:
-            json_data = json.load(uploaded_file)
-            
-            if isinstance(json_data, list):  # Full database export
+            try:
+                json_data = json.load(uploaded_file)
+            except json.JSONDecodeError:
+                # If standard parsing fails, try to fix common issues:
+                # - Unquoted keys/values (JavaScript object notation)
+                # - Multiple JSON objects concatenated together
+                uploaded_file.seek(0)
+                raw_content = uploaded_file.read().decode("utf-8").strip()
+                json_data = self._try_fix_json(raw_content)
+
+            if json_data is None:
+                st.error(
+                    "Invalid JSON file. Ensure all property names and string values "
+                    "are enclosed in double quotes. Example:\n\n"
+                    '```json\n{"id": "C_001", "name": "My Crew"}\n```'
+                )
+            elif isinstance(json_data, list):  # Full database export
                 with open("uploaded_file.json", "w") as f:
                     json.dump(json_data, f)
                 db_utils.import_from_json("uploaded_file.json")
